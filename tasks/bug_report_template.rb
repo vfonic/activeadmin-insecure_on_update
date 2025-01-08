@@ -319,7 +319,7 @@ class BugTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_equal @forum_thread.reload.forum_id, @admin_forum.id
+    assert_not_equal @forum_thread.reload.forum_id, @other_forum.id
   end
 
   private

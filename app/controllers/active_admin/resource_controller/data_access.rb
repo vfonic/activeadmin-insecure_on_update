@@ -171,6 +171,7 @@ module ActiveAdmin
         status = nil
         ActiveRecord::Base.transaction do
           object = assign_attributes(object, attributes)
+          authorize_resource! object
 
           run_update_callbacks object do
             status = save_resource(object)

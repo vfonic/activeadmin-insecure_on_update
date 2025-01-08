@@ -169,6 +169,7 @@ module ActiveAdmin
       # @return [void]
       def update_resource(object, attributes)
         object = assign_attributes(object, attributes)
+        authorize_resource! object
 
         run_update_callbacks object do
           save_resource(object)

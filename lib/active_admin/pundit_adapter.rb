@@ -19,7 +19,7 @@ module ActiveAdmin
     end
 
     def scope_collection(collection, action = Auth::READ)
-      # scoping is appliable only to read/index action
+      # scoping is applicable only to read/index action
       # which means there is no way how to scope other actions
       Pundit.policy_scope!(user, namespace(collection))
     rescue Pundit::NotDefinedError => e
@@ -42,7 +42,7 @@ module ActiveAdmin
     end
 
     def format_action(action, subject)
-      # https://github.com/varvet/pundit/blob/main/lib/generators/pundit/install/templates/application_policy.rb
+      # https://github.com/varvet/pundit/blob/main/lib/generators/pundit/install/templates/application_policy.rb.tt
       case action
       when Auth::READ then subject.is_a?(Class) ? :index? : :show?
       when Auth::DESTROY then subject.is_a?(Class) ? :destroy_all? : :destroy?

@@ -60,6 +60,16 @@ ActiveRecord::Schema.define do
   create_table :active_admin_comments, force: true do |_t|
   end
 
+  # Add sessions table for ActiveRecord store
+  create_table :sessions do |t|
+    t.string :session_id, null: false
+    t.text :data
+    t.timestamps
+  end
+
+  add_index :sessions, :session_id, unique: true
+  add_index :sessions, :updated_at
+
   create_table :users, force: true do |t|
     t.string :full_name
     t.integer :manager_of_forum_id
@@ -78,6 +88,15 @@ ActiveRecord::Schema.define do
   create_table :forum_threads, force: true do |t|
     t.string :title
     t.integer :forum_id
+  end
+end
+
+# Add Session model for ActiveRecord store
+class ActiveRecord::SessionStore::Session < ActiveRecord::Base
+  attr_accessor :callback_called
+
+  def self.data_column_size_limit
+    65536
   end
 end
 
@@ -194,7 +213,7 @@ class ForumPolicy < ApplicationPolicy
 
   class Scope < ::ApplicationPolicy::Scope
     def resolve
-      scope.all # where(id: user.manager_of_forum_id)
+      scope.where(id: user.manager_of_forum_id)
     end
   end
 end

@@ -220,6 +220,14 @@ end
 
 class ForumThreadPolicy < ApplicationPolicy
   def index? = true
+  def update? = record.forum_id == user.manager_of_forum_id
+  def create? = record.forum_id == user.manager_of_forum_id
+
+  class Scope < ::ApplicationPolicy::Scope
+    def resolve
+      scope.where(forum_id: user.manager_of_forum_id)
+    end
+  end
 end
 
 Rails.application.initialize!
@@ -238,6 +246,7 @@ ActiveAdmin.register Forum do
 end
 
 ActiveAdmin.register ForumThread do
+  permit_params :title, :forum_id
 end
 
 Rails.application.routes.draw do
@@ -254,18 +263,62 @@ class BugTest < ActionDispatch::IntegrationTest
   include ::Warden::Test::Helpers
   Warden.test_mode!
 
+  setup do
+    @admin_forum = Forum.create! name: "Test Forum"
+    @other_forum = Forum.create! name: "Other Forum"
+    @user = User.create! email: "test@example.com", password: "password", full_name: "John Doe", manager_of_forum_id: @admin_forum.id
+    login_as @user, scope: :user
+  end
+
   teardown { Warden.test_reset! }
 
-  def test_admin_cannot_create_forum_thread_for_another_forum
-    admin_forum = Forum.create! name: "Test Forum"
-    other_forum = Forum.create! name: "Other Forum"
-    user = User.create! email: "test@example.com", password: "password", full_name: "John Doe", manager_of_forum_id: admin_forum.id
-    login_as user, scope: :user
-
+  def test_admin_cannot_see_forum_hes_not_manager_of
     get admin_forums_url
 
     assert_response :success
-    assert_no_match other_forum.name, response.body
+    assert_no_match @other_forum.name, response.body
+  end
+
+  def test_admin_can_create_forum_thread_for_a_forum_hes_manager_of
+    assert_difference 'ForumThread.count' do
+      post admin_forum_threads_url, params: {
+        forum_thread: {
+          title: "Test Thread",
+          forum_id: @admin_forum.id
+        }
+      }
+    end
+
+    assert_not_nil ForumThread.find_by(title: "Test Thread", forum_id: @admin_forum.id)
+  end
+
+  def test_admin_cannot_create_forum_thread_for_a_forum_hes_not_manager_of
+    assert_no_difference 'ForumThread.count' do
+      post admin_forum_threads_url, params: {
+        forum_thread: {
+          title: "Test Thread",
+          forum_id: @other_forum.id
+        }
+      }
+    end
+
+    assert_response :redirect # or :unauthorized depending on your authorization setup
+    # Verify no thread was created for the other forum
+    assert_nil ForumThread.find_by(forum_id: @other_forum.id)
+  end
+
+  def test_admin_cannot_transfer_forum_thread_to_a_forum_hes_not_manager_of
+    @forum_thread = ForumThread.create!(title: "Test Thread", forum_id: @admin_forum.id)
+
+    assert_no_difference 'ForumThread.count' do
+      patch admin_forum_thread_url(@forum_thread), params: {
+        forum_thread: {
+          forum_id: @other_forum.id
+        }
+      }
+    end
+
+    assert_equal @forum_thread.reload.forum_id, @admin_forum.id
   end
 
   private
